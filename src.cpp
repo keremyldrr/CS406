@@ -19,11 +19,7 @@ void usage()
   cout << "USAGE: ./exec <filename>" << endl;
   exit(0);
 }
-int permanent_calculate(int **M){
 
-
-  return 0;
-}
 
 int* get_last_col(int **M,int N){
 
@@ -51,10 +47,8 @@ long long *generate_gray_coding_sequence(int N){
   long long upperLimit = (1 << (N-1));
   long long *y=new long long[upperLimit];
   for(int i=0;i<upperLimit;i++){
-
     int temp = i >> 1;
     y[i] =  i ^ temp;
-
    }
 
   return y;
@@ -69,52 +63,49 @@ int* find_changing_bits(long long *y,int N){
 	j=i+1;
 	long long temp = y[j] ^ y[i];
 	bitnums[i] =log2(temp);
-	//	cout <<y[j] << " " << y[i+1]<< endl;
+
       }
     return bitnums;
  
 }
-int *find_signs(long long *y,int *bitnums,int N){
+int *find_signs(long long *y,int *bitnums,int N,int t){
 
   int lim = 1<<(N-1);
-    int *signs = new int[lim];
-  for(int i=0;i<lim;i++){
-    int mask = 1 << (bitnums[i]);
-    int temp = y[i] & mask;
-    //    temp = temp & 1;
-   
-    if(temp)
-      signs[i+1] = -1;
-    else
-      signs[i+1] = 1;
+  int *signs = new int[lim];
+  
+  
+  
 
-  }
+      for(int i=0;i<lim;i++){
+	int mask = 1 << (bitnums[i]);
+	int temp = y[i] & mask;
+	if(temp)
+	  signs[i] = -1;
+	else
+	  signs[i] = 1;
+      }
   return signs;
 }
 void updateP(long long *y,double *x,long  double &p,int *bitnums,int *signs,int N,int **M){
-  signs[0] = 1;
+
   int lim = (1 << N-1)-1;
+
+  
   for(int i=0;i<lim; i++)
     {
-      int first_bit = 1 & y[i];
-      int _sign = pow(-1,i);
-      int col_ind = bitnums[i];
+      int firstbit = 1 & (i+1);
+      int _sign = pow(-1,firstbit);
       
+      int col_ind = bitnums[i];
+
       for(int k = 0;k<N;k++)
 	{
 	  x[k]+=signs[i]*M[k][col_ind];
 
 	}
-
- long double pp = product(x,N);
-  if(i<10)
-    cout <<x[i]<<  endl;
-  p+= pp *_sign;
+      
+      p+=  product(x,N) *_sign;
     }
-    
-   
-    
-
 }
 double *sum_column_getx(int **M,int N,int num_threads){
   double *column_sum = new double[N];
@@ -123,11 +114,12 @@ double *sum_column_getx(int **M,int N,int num_threads){
       column_sum[i]+=(double)M[i][j]/2;
 
   }
+ 
   int *last_col = get_last_col(M,N);
   for(int i=0;i<N;i++){
     column_sum[i] = (last_col[i] - column_sum[i]);
   }
-
+ 
   return column_sum;
 }
 
@@ -171,18 +163,16 @@ int main(int argc, const char** argv)
     start = omp_get_wtime();
   ////YOUR CODE GOES HERE
 
-    int result =0;
+    double result =0;
     // best of luck :)
     double *x = sum_column_getx(M,N,t);
+   
     long double p = product(x,N);
-    cout << "pf " << p << endl;
     long long *y =  generate_gray_coding_sequence(N);
     int *bitnums = find_changing_bits(y,N);
-    int *signs = find_signs(y,bitnums,N);
-
-
+    int *signs = find_signs(y,bitnums,N,t);
     updateP(y,x,p,bitnums,signs,N,M);
-    cout << p << endl;
+    result = (4*(N % 2)-2)*p;
     //// YOUR CODE ENDS HERE
 
     delete [] y;
