@@ -4,7 +4,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <cmath>
-#include<bitset>
+#include<cstring>
 using namespace std;
 
 
@@ -76,57 +76,90 @@ int main(int argc, const char** argv)
   double start, end;
   for(int t = 1; t <=16; t*=2) { //t is the number of threads
     start = omp_get_wtime();
-  ////YOUR CODE GOES HERE
-    double result =0;
-    // best of luck :)
-    double *x = sum_column_getx(M,N,t);
-    long double p=1;
-    for(int q = 0;q<N;q++)
-      {
-	p*=x[q];
-      };
+    
+    ////YOUR CODE GOES HERE
+    long long lim = (1 << N - 1) +1;
+    int chunkSize = lim/t;
 
-    long long lim = (1 << N-1) -1;
+
+    int **lookup = new int *[t];
+    for(int i = 0;i<t;i++)
+      {
+	lookup[i] = new int[N];
+	
+      }
+
+    
+
+    
+    int tid = omp_get_thread_num();
+    
+    int start = tid *chunkSize;
+    int end = start + chunkSize-1;
+
+    double result = 0;
+    // best of luck :)
+    double *x = sum_column_getx(M, N, t);
+    double *x_0 = new double[N];
+    memcpy(x_0, x, sizeof(double) * N);
+
+    long double p = 1;
+    for (int q = 0; q < N; q++) {
+      p *= x[q];
+    };
+
+    
     omp_set_num_threads(t);
     //parallel region start here
-   
-    for(int i=0;i<lim;i++)
-      {
-      int y = i ^ (i >> 1);
-      int j = i+1;
-      int z = log2(y ^ (j^(j>>1)));
+
+    for (int i = 1; i < lim; i++) {
+      //memcpy(x, x_0, sizeof(double) * N);
+      // copy(x,(x+N),x_0);
+      unsigned int y = i ^(i >> 1);
+      int j = i + 1;
+      int z = log2(y ^ (j ^ (j >> 1)));
       int mask = 1 << z;
-      int s = (y & mask) ? -1 : 1;
-      int prodSign ;
-      if(1 & i)
-	prodSign = 1;
-      else
+      int s = (y & mask) ? 1 : -1;
+      int prodSign;
+      if (1 & i)
 	prodSign = -1;
+      else
+	prodSign = 1;
 
-      
       double prodX = 1;
-      
 
-      bool check = true;
-      while( check)
-	{
-	  int ind = __builtin_clz(z);
-	  check = ind;
-	  z = (32-ind)+1;
-	  for(int q = 0;q<N;q++)
-	    {
-	      x[q] += s*M[q][z];
-	      prodX*=x[q];	
-	    }
-      	  z = z ^ (1 <<  (32-ind)+1);
-	  
-       }
+      mask = 1;
+      int cnt = 0;
       
-      p+=prodX*prodSign;
+      
+      while (y > 0) {
+
+	int bit = mask & y;
+
+	if (bit != 0) {
+	  
+	  for (int q = 0; q < N; q++) {
+	   
+	    x[q] += M[q][cnt];
+	  }
+
+
+	}
+	cnt++;
+	y = y >> 1;
+
 
       }
 
-    result = (4*(N % 2)-2)*p;
+      for (int q = 0; q < N; q++) {
+	prodX *= x[q];
+      }
+
+      p += prodX * prodSign;
+
+    }
+
+    result = (4 * (N % 2) - 2) * p;
     //// YOUR CODE ENDS HERE
 
     
