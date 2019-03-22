@@ -85,7 +85,8 @@ int main(int argc, const char** argv)
      omp_set_num_threads(t);
     //parallel region start here
     
-     double *x = sum_column_getx(M,N); 
+     double *x = sum_column_getx(M,N);
+     double *x_0 = sum_column_getx(M,N); 
      double result = 0;
      long double p = 1;
      for (int q = 0; q < N; q++) {
@@ -97,7 +98,7 @@ int main(int argc, const char** argv)
    
 #pragma omp parallel private(i) reduction(+:p)
      {
-     
+       double *x = sum_column_getx(M,N);
  
        int tid = omp_get_thread_num();
        int st = tid *chunkSize;
@@ -105,33 +106,34 @@ int main(int argc, const char** argv)
        
        for (i = st; i < e; i++)
 	 {
-	 
 	   int y = i ^(i >> 1);
 	   int j = i + 1;
 	   int z = log2(y ^ (j ^ (j >> 1)));
 	   int mask = 1 << z;
 	   int s = (y & mask) ? -1 : 1;
 	   int prodSign;
-	   int y_old=y;
 	   if(i==st)
 	     {
 	      int cnt=0;
 	      mask=1;
-	      int flg = 1;
+
 	      while (y > 0) {
 		 
                 int bit = mask & y;
-
+		
                 if (bit != 0) {
 		  for (int q = 0; q < N; q++) {
 		    x[q] += M[q][cnt];
+		    
                     }
                 }
+
                 cnt++;
                 y = y >> 1;
 		
+		
 	       }
-
+	      
 	     }
 	   if (1 & i)
 	     prodSign = 1;
@@ -146,9 +148,8 @@ int main(int argc, const char** argv)
 	     prodX *= x[q];
 	   }
 	 
-      
-	 #pragma omp critical
-	   p += prodX * prodSign;
+
+	 p += prodX * prodSign;
 
 	 
 	 }
