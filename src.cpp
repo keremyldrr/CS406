@@ -23,7 +23,7 @@ int* get_last_col(int **M,int N){
   return col ;
 }
 
-double *sum_column_getx(int **M,int N,int num_threads){
+double *sum_column_getx(int **M,int N){
   double *column_sum = new double[N];
   for(int i=0;i<N;i++){
     for(int j=0; j<N;j++)
@@ -78,40 +78,70 @@ int main(int argc, const char** argv)
     start = omp_get_wtime();
     
     ////YOUR CODE GOES HERE
+    double *x = sum_column_getx(M,N);
     long long lim = (1 << N - 1) +1;
     int chunkSize = lim/t;
-
-
-    int **lookup = new int *[t];
+    double **lookup = new double *[t];
     for(int i = 0;i<t;i++)
       {
 	lookup[i] = new int[N];
-	
+	memcpy(lookup[i], x, sizeof(double) * N);
+	int ind = i*chunkSize;
+	int y  = ind ^ (ind >> 1);
+	int cnt = 0;
+	int  mask = 1;
+	while (y > 0) {
+
+	  
+	  int bit = mask & y;
+	  
+	  if (bit != 0) {
+	    
+	    for (int q = 0; q < N; q++) {
+	      
+	      lookup[i][q] = M[q][cnt];
+	    }
+	  }
+	  cnt++;
+	  y = y >> 1;
+	  
+
+	}
+      
+	cout << "t is  = "<< t << "and index is " << ind << endl;
+	for(int z=0;z<N;z++){
+	  cout << lookup[i][z] << endl;;
+	  
+	}
+	cout << "-------------------------------------"  << endl;
       }
-
+  }
     
 
     
-    int tid = omp_get_thread_num();
     
-    int start = tid *chunkSize;
-    int end = start + chunkSize-1;
-
-    double result = 0;
     // best of luck :)
-    double *x = sum_column_getx(M, N, t);
-    double *x_0 = new double[N];
-    memcpy(x_0, x, sizeof(double) * N);
+  
+    //    double *x_0 = new double[N];
 
+
+
+
+    
+  // omp_set_num_threads(t);
+    //parallel region start here
+
+    /*
+      int tid = omp_get_thread_num();
+    
+    int s = tid *chunkSize;
+    int e = start + chunkSize-1;
+    
+    double result = 0;
     long double p = 1;
     for (int q = 0; q < N; q++) {
       p *= x[q];
     };
-
-    
-    omp_set_num_threads(t);
-    //parallel region start here
-
     for (int i = 1; i < lim; i++) {
       //memcpy(x, x_0, sizeof(double) * N);
       // copy(x,(x+N),x_0);
@@ -128,36 +158,16 @@ int main(int argc, const char** argv)
 
       double prodX = 1;
 
-      mask = 1;
-      int cnt = 0;
+
       
-      
-      while (y > 0) {
-
-	int bit = mask & y;
-
-	if (bit != 0) {
-	  
-	  for (int q = 0; q < N; q++) {
-	   
-	    x[q] += M[q][cnt];
-	  }
-
-
-	}
-	cnt++;
-	y = y >> 1;
-
-
-      }
-
+     
       for (int q = 0; q < N; q++) {
 	prodX *= x[q];
       }
 
       p += prodX * prodSign;
 
-    }
+      }
 
     result = (4 * (N % 2) - 2) * p;
     //// YOUR CODE ENDS HERE
@@ -166,7 +176,8 @@ int main(int argc, const char** argv)
     end = omp_get_wtime();
 
     cout << "Threads: " << t << "\tResult:" << result << "\tTime:" << end - start << " s" << endl;
-  }
+    }*/
+
   for( int i=0;i<N;i++)
     delete [] M[i];
   delete M;
