@@ -74,109 +74,94 @@ int main(int argc, const char** argv)
   }
 
   double start, end;
+
   for(int t = 1; t <=16; t*=2) { //t is the number of threads
     start = omp_get_wtime();
     
     ////YOUR CODE GOES HERE
-    double *x = sum_column_getx(M,N);
-    long long lim = (1 << N - 1) +1;
-    int chunkSize = lim/t;
-    double **lookup = new double *[t];
-    for(int i = 0;i<t;i++)
-      {
-	lookup[i] = new int[N];
-	memcpy(lookup[i], x, sizeof(double) * N);
-	int ind = i*chunkSize;
-	int y  = ind ^ (ind >> 1);
-	int cnt = 0;
-	int  mask = 1;
-	while (y > 0) {
-
-	  
-	  int bit = mask & y;
-	  
-	  if (bit != 0) {
-	    
-	    for (int q = 0; q < N; q++) {
-	      
-	      lookup[i][q] = M[q][cnt];
-	    }
-	  }
-	  cnt++;
-	  y = y >> 1;
-	  
-
-	}
-      
-	cout << "t is  = "<< t << "and index is " << ind << endl;
-	for(int z=0;z<N;z++){
-	  cout << lookup[i][z] << endl;;
-	  
-	}
-	cout << "-------------------------------------"  << endl;
-      }
-  }
+   
     
-
-    
-    
-    // best of luck :)
-  
-    //    double *x_0 = new double[N];
-
-
-
-
-    
-  // omp_set_num_threads(t);
+    long long lim = (1 << N - 1) -1;
+     omp_set_num_threads(t);
     //parallel region start here
-
-    /*
-      int tid = omp_get_thread_num();
     
-    int s = tid *chunkSize;
-    int e = start + chunkSize-1;
-    
-    double result = 0;
-    long double p = 1;
-    for (int q = 0; q < N; q++) {
-      p *= x[q];
-    };
-    for (int i = 1; i < lim; i++) {
-      //memcpy(x, x_0, sizeof(double) * N);
-      // copy(x,(x+N),x_0);
-      unsigned int y = i ^(i >> 1);
-      int j = i + 1;
-      int z = log2(y ^ (j ^ (j >> 1)));
-      int mask = 1 << z;
-      int s = (y & mask) ? 1 : -1;
-      int prodSign;
-      if (1 & i)
-	prodSign = -1;
-      else
-	prodSign = 1;
+     double *x = sum_column_getx(M,N); 
+     double result = 0;
+     long double p = 1;
+     for (int q = 0; q < N; q++) {
+       p *= x[q];
+     }
 
-      double prodX = 1;
-
-
-      
+     int i;
+     int chunkSize = lim/t;
+   
+#pragma omp parallel private(i) reduction(+:p)
+     {
      
-      for (int q = 0; q < N; q++) {
-	prodX *= x[q];
-      }
+ 
+       int tid = omp_get_thread_num();
+       int st = tid *chunkSize;
+       int e = st + chunkSize;
+       
+       for (i = st; i < e; i++)
+	 {
+	 
+	   int y = i ^(i >> 1);
+	   int j = i + 1;
+	   int z = log2(y ^ (j ^ (j >> 1)));
+	   int mask = 1 << z;
+	   int s = (y & mask) ? -1 : 1;
+	   int prodSign;
+	   int y_old=y;
+	   if(i==st)
+	     {
+	      int cnt=0;
+	      mask=1;
+	      int flg = 1;
+	      while (y > 0) {
+		 
+                int bit = mask & y;
 
-      p += prodX * prodSign;
+                if (bit != 0) {
+		  for (int q = 0; q < N; q++) {
+		    x[q] += M[q][cnt];
+                    }
+                }
+                cnt++;
+                y = y >> 1;
+		
+	       }
 
-      }
+	     }
+	   if (1 & i)
+	     prodSign = 1;
+	   else
+	     prodSign = -1;
+	   
+	 double prodX = 1;
+	 
+	 for(int q=0;q<N;q++)
+	   {
+	     x[q]+=s*M[q][z];
+	     prodX *= x[q];
+	   }
+	 
+      
+	 #pragma omp critical
+	   p += prodX * prodSign;
 
-    result = (4 * (N % 2) - 2) * p;
+	 
+	 }
+     }
+     
+     result = (4 * (N % 2) - 2) * p;
     //// YOUR CODE ENDS HERE
 
     
     end = omp_get_wtime();
 
     cout << "Threads: " << t << "\tResult:" << result << "\tTime:" << end - start << " s" << endl;
-    }*/
+    }
 
   for( int i=0;i<N;i++)
     delete [] M[i];
