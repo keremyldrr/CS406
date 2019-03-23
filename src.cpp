@@ -83,41 +83,48 @@ int main(int argc, const char** argv)
      omp_set_num_threads(t);
     //parallel region start here
     
-     int chunkSize = ceil(lim/double(t));
+     int chunkSize = (lim/(t));
      
      //double *x_new = sum_column_getx(M,N);
-     long double p = 1;
+     double p = 1;
      double result = 0;
-      double *x =sum_column_getx(M,N) ;
-      for (int q = 0; q < N; q++) {
-	p *= x[q];
-      }
-      bool init =false;
+     double *x =sum_column_getx(M,N) ;
+     for (int q = 0; q < N; q++) {
+       p *= x[q];
+     }
+     bool init =false;
+     int pad = 256;
+     int size = t*256;
+     // double *p_values = new double[size];
+     //      memset(p_values,0,sizeof(double)*(t*256));
+     //for(int i=0;i++;i<t)
+     //	p_values[i*pad] = p;
 #pragma omp parallel  
-      {
+     { 
 	int tid = omp_get_thread_num();
 	double *x_new =sum_column_getx(M,N) ;
 	int r = (tid)*chunkSize;
 	int y = r ^ (r>>1);
 	//printf("Thread %d  iteration %d ,\n ",tid,r);
 	int numSetBits= __builtin_popcount(y);
-	for(int f=0;f<numSetBits && tid!=0;f++)
+	for(int f=0;f<numSetBits;f++)
 	  {
 	    int bit = __builtin_ffs(y);
 	    if(bit !=0);
-	       {
-		 for (int q = 0; q < N; q++)
-		   {
-		     x_new[q] += M[q][bit-1];
-		   }
-		 y = y^(1 << (bit-1));
-	       }
+	    {
+	      for (int q = 0; q < N; q++)
+		{
+		  x_new[q] += M[q][bit-1];
+		  
+		}
+	      y = y^(1 << (bit-1));
+	    }
 	  }
-
-
-#pragma omp for firstprivate(init)  schedule(static) reduction(+:p)
-       for (int i = 1; i < lim; i++)
-	 {
+	
+	
+#pragma omp for schedule(static) reduction(+:p)
+	for (int i = 1; i < lim; i++)
+	  {
 	   int y = i ^ (i >> 1);
 	   int j = i - 1;
 	   int z = log2(y ^ (j ^ (j >> 1))) +1;
@@ -134,31 +141,32 @@ int main(int argc, const char** argv)
 	   else
 	     prodSign = 1;
 	   double prodX = 1;
-	    if(!init)
-	      {
-	      init =true;
-
-	      //	      printf( "OLUM %d %d \n",tid,i);
-
-	       }
-	   //deneme
-
+	   
 	   for(int q=0;q<N;q++)
 	     {
+
 	       x_new[q]+=s*M[q][z-1];
+	       
 	       prodX *= x_new[q];
 	     }
-	   
-	   p += prodX * prodSign;
-	   
-		
+	   /*
+	   if(isnan(prodX))
+	     {
+	       cout << i << endl;
+	       for(int q=0;q<N;q++)
+		 cout << x_new[q] <<" " << z << endl;
+	       while(true)
+		 {}
+		 }*/
+	   p+= prodX * prodSign;
 
 	 }
+
       }
+
       result = (4 * (N % 2) - 2) * p;
       //// YOUR CODE ENDS HERE
-      
-    
+          
     end = omp_get_wtime();
 
     cout << "Threads: " << t << "\tResult:" << result << "\tTime:" << end - start << " s" << endl;
