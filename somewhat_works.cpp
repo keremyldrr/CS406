@@ -79,11 +79,13 @@ int main(int argc, const char** argv)
     start = omp_get_wtime();
     
     ////YOUR CODE GOES HERE
-    long long lim = (1 << (N - 1)) ;
+   
+    
+    long long lim = (1 << N - 1)  - 1 ;
      omp_set_num_threads(t);
     //parallel region start here
     
-     int chunkSize = ceil(lim/double(t));
+     double chunkSize = ceil(lim/t);
      
      //double *x_new = sum_column_getx(M,N);
      long double p = 1;
@@ -97,7 +99,7 @@ int main(int argc, const char** argv)
       {
 	int tid = omp_get_thread_num();
 	double *x_new =sum_column_getx(M,N) ;
-	int r = (tid)*chunkSize;
+	int r = (tid)*chunkSize + 1;
 	int y = r ^ (r>>1);
 	//printf("Thread %d  iteration %d ,\n ",tid,r);
 	int numSetBits= __builtin_popcount(y);
@@ -116,7 +118,7 @@ int main(int argc, const char** argv)
 
 
 #pragma omp for firstprivate(init)  schedule(static) reduction(+:p)
-       for (int i = 1; i < lim; i++)
+       for (int i = 1; i <= lim; i++)
 	 {
 	   int y = i ^ (i >> 1);
 	   int j = i - 1;
