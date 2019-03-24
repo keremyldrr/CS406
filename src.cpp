@@ -93,12 +93,13 @@ int main(int argc, const char** argv)
        p *= x[q];
      }
      bool init =false;
-     int pad = 256;
-     int size = t*256;
-     // double *p_values = new double[size];
-     //      memset(p_values,0,sizeof(double)*(t*256));
+     int pad = 512;
+     //int size = t*256;
+      double *p_values = new double[t*pad];
+      memset(p_values,0,sizeof(double)*(t*pad));
      //for(int i=0;i++;i<t)
      //	p_values[i*pad] = p;
+      p_values[0] = p;
 #pragma omp parallel  
      { 
 	int tid = omp_get_thread_num();
@@ -122,7 +123,7 @@ int main(int argc, const char** argv)
 	  }
 	
 	
-#pragma omp for schedule(static) reduction(+:p)
+#pragma omp for schedule(static)// reduction(+:p)
 	for (int i = 1; i < lim; i++)
 	  {
 	   int y = i ^ (i >> 1);
@@ -158,13 +159,23 @@ int main(int argc, const char** argv)
 	       while(true)
 		 {}
 		 }*/
-	   p+= prodX * prodSign;
+	   p_values[tid*pad]+= prodX * prodSign;
 
 	 }
 
       }
+     double p2 = 0;
+     
+     for(int w=0;w<t;w++)
+       {
+	 //if(t == 8)
+	   //	   cout << p_values[w] << endl;
+	 p2+=p_values[w*pad];
 
-      result = (4 * (N % 2) - 2) * p;
+       }
+
+     
+      result = (4 * (N % 2) - 2) * p2;
       //// YOUR CODE ENDS HERE
           
     end = omp_get_wtime();
