@@ -39,13 +39,14 @@ int main(int argc, const char** argv)
   for(int i = 0; i < N; i ++)
     M[i] = new int[N];
 
+
   int linectr = 0;
   while(getline(input,line)){
     stringstream ss(line);
     int temp;
     int ctr = 0;
     while(ss >> temp)
-      M[ctr++][linectr] = temp;
+      M[linectr][ctr++] = temp;
 
     linectr++;
   }
@@ -60,28 +61,28 @@ int main(int argc, const char** argv)
      omp_set_num_threads(t);
      //parallel region start here
      double *column_sum = new double[N];
+     // double *x =new double[N];    
      double p = 1;
      for(int i=0;i<N;i++)
        {
 	 column_sum[i] = 0;
-
+	 //	 x[i] = 0;
 	 for(int j=0;j<N;j++)
 	   {
-	     column_sum[i]+=M[j][i];
+	     column_sum[i]+=M[i][j];
 	   }
 
-	 p *= M[N-1][i] - column_sum[i]/2;
+	 p *= M[i][N-1] - column_sum[i]/2;
 	 
        }
      int chunkSize = (lim/(t));
      double result = 0;
 #pragma omp parallel 
-     {
-
+     { 
 	int tid = omp_get_thread_num();
 	double *x_new = new double[N];
 	for(int i=0;i<N;i++)
-	  x_new[i] = (M[N-1][i] - double(column_sum[i]/2));
+	  x_new[i] = (M[i][N-1] - double(column_sum[i]/2));
 	int r = (tid)*chunkSize;
 	int y = r ^ (r>>1);
 	int numSetBits= __builtin_popcount(y);
@@ -92,7 +93,8 @@ int main(int argc, const char** argv)
 	    {
 	      for (int q = 0; q < N; q++)
 		{
-		  x_new[q] += M[bit-1][q];
+		  x_new[q] += M[q][bit-1];
+		  
 		}
 	      y = y^(1 << (bit-1));
 	    }
@@ -118,7 +120,7 @@ int main(int argc, const char** argv)
 	   double prodX = 1;
 	   for(int q=0;q<N;q++)
 	     {
-	       x_new[q]+=s*M[z-1][q];
+	       x_new[q]+=s*M[q][z-1];
 	       prodX *= x_new[q];
 	     }
 	   p+= prodX * prodSign;
