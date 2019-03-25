@@ -1,0 +1,13 @@
+import sys
+import subprocess
+import os
+data, temp = os.pipe()
+st = ""
+for i in range(10):
+    s = subprocess.check_output("./out3 input4.txt", stdin = data, shell = True)
+    
+    st +=(s.decode("utf-8")) 
+
+
+
+print(st)
