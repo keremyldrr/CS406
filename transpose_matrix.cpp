@@ -94,7 +94,7 @@ int main(int argc, const char** argv)
      double *column_sum = new double[N];
      double p = 1;
      
-#pragma omp simd reduction(*:p)
+     //#pragma omp simd reduction(*:p)
      for(int i=0;i<N;i++)
        {
 	 column_sum[i] = 0;
@@ -110,19 +110,19 @@ int main(int argc, const char** argv)
      int chunkSize = (lim/(t));
      double result = 0;
      
-#pragma omp parallel proc_bind(spread)
+#pragma omp parallel// proc_bind(spread)
      {
-       int **M_2  = new int*[N];
+       /*int **M_2  = new int*[N];
        for(int i=0;i<N;i++)
 	 {
 	   M_2[i] = new int[N];
 	   for(int j=0;j<N;j++)
 	     M_2[i][j] = M[i][j];
-	 }
+	     }*/
        int tid = omp_get_thread_num();
 	double *x_new = new double[N];
 	for(int i=0;i<N;i++)
-	  x_new[i] = (M_2[N-1][i] - double(column_sum[i]/2));
+	  x_new[i] = (M[N-1][i] - double(column_sum[i]/2));
 	int r = (tid)*chunkSize;
 	int y = r ^ (r>>1);
 	int numSetBits= __builtin_popcount(y);
@@ -133,7 +133,7 @@ int main(int argc, const char** argv)
 	    {
 	      for (int q = 0; q < N; q++)
 		{
-		  x_new[q] += M_2[bit-1][q];
+		  x_new[q] += M[bit-1][q];
 		}
 	      y = y^(1 << (bit-1));
 	    }
@@ -143,7 +143,7 @@ int main(int argc, const char** argv)
 	  {
 	   int y = i ^ (i >> 1);
 	   int j = i - 1;
-	   int z = myLog2(y ^ (j ^ (j >> 1))) +1;
+	   int z = log2(y ^ (j ^ (j >> 1))) +1;
 	   
 	   int mask = 1 << z-1;
 	   int getBit= (y & mask) ;
@@ -162,7 +162,7 @@ int main(int argc, const char** argv)
 	   #pragma omp simd reduction(*:prodX)
 	   for(int q=0;q<N;q++)//vector add
 	     {
-	       x_new[q]+=s*M_2[z-1][q];
+	       x_new[q]+=s*M[z-1][q];
 	       prodX *= x_new[q];
 	     }
 
