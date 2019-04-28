@@ -13,7 +13,7 @@ void checkGraph(int *row,int *col,int *colors,int N)
 {
   for(int i=0;i<N;i++)
     {
-      int ind = col[i];
+      int ind = i;
       int currColor = colors[ind];
       int start = row[ind];
       int end = row[ind+1];
