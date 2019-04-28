@@ -80,10 +80,6 @@ int main(int argc,const char **argv)
           }
       }
       file.close();
-
-
-
-
       if(based0)
           cout << "Graph is 0 based" << endl;
       else
@@ -135,8 +131,10 @@ int main(int argc,const char **argv)
 
       int *row = new int[N+1];
       int *col = new int[edge];
-      int *yassak = new int[N]{-1};
-      int *colors = new int[N]{-1};
+      int *yassak = new int[N]{0};
+      int *colors = new int[N];
+      for(int i =0;i<N;i++)
+	colors[i]  = -1;
 
       row[0] = 0;
       int index = 0;
@@ -154,18 +152,22 @@ int main(int argc,const char **argv)
 
 
       double begin = omp_get_wtime();
-    for(int v = 0; v< N;v++)
+    for(int v = 0; v < N;v++)
       {
 	int ind = col[v];
 	int start = row[ind];
 	int end = row[ind+1];
 	//	int currColor = colors[ind];
+	int cnt = 0;
 	for(int i = start;i<end;i++)
 	  {
-	    int badColor = colors[col[i]];
-	    yassak[badColor] = v;
-
+	    if(colors[col[i]] != -1)
+	      {
+		yassak[colors[col[i]]]= v;
+		//	cnt++;
+	      }
 	  }
+	//cout << "Saved " << end-start - cnt  << endl;
 	for(int t = 0;t<N;t++)
 	  {
 	    if(yassak[t] != v)
