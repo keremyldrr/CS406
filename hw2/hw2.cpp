@@ -131,10 +131,10 @@ int main(int argc,const char **argv)
 
       int *row = new int[N+1];
       int *col = new int[edge];
-      int *yassak = new int[N]{0};
+      int *forbidden = new int[N]{0};
       int *colors = new int[N];
       for(int i =0;i<N;i++)
-	colors[i]  = -1;
+	colors[i]  = 0;
 
       row[0] = 0;
       int index = 0;
@@ -154,32 +154,30 @@ int main(int argc,const char **argv)
       double begin = omp_get_wtime();
     for(int v = 0; v < N;v++)
       {
-	int ind = col[v];
-	int start = row[ind];
-	int end = row[ind+1];
-	//	int currColor = colors[ind];
-	int cnt = 0;
+	//int ind = col[v];
+	int start = row[v];
+	int end = row[v+1];
+
 	for(int i = start;i<end;i++)
 	  {
-	    if(colors[col[i]] != -1)
-	      {
-		yassak[colors[col[i]]]= v;
-		//	cnt++;
-	      }
+	    int dd = col[i];
+
+	    forbidden[colors[dd]]= v;
+
 	  }
-	//cout << "Saved " << end-start - cnt  << endl;
+
 	for(int t = 0;t<N;t++)
 	  {
-	    if(yassak[t] != v)
+	    if(forbidden[t] != v)
 	      {
-		colors[ind] = t;
+		colors[v] = t;
 		break;
 	      }
 	  }
       }
-    double end = omp_get_wtime();
+    double ends= omp_get_wtime();
 
-    cout<< "Execution time is: " << end - begin << "seconds" << endl;
+    cout<< "Execution time is: " << ends - begin << "seconds" << endl;
     
     checkGraph(row,col,colors,N);
     int maxy = 0;
