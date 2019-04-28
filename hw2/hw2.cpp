@@ -22,7 +22,7 @@ void checkGraph(int *row,int *col,int *colors,int N)
 	{
 	  if(colors[col[n]] == currColor)
 	    { 
-	      cout <<ind << " " << col[n] <<  "ERROR ";
+	      cout  <<  "ERROR ";
 	      return;
 	    }
 	}
@@ -181,12 +181,13 @@ int main(int argc,const char **argv)
 		    }
 		  }
 	      }
-	  
+	    delete [] forbidden;
 	  }
+
 	    double ends= omp_get_wtime();
 	  cout<<t << " Threads Execution time is: " << ends - begin << " seconds ";
-	  
-	  checkGraph(row,col,colors,N);
+	  checkGraph(row,col,colors,N);	  
+
 	  int maxy = 0;
 	  for(int q = 0;q<N;q++)
 	    {
