@@ -164,7 +164,7 @@ int main(int argc,const char **argv)
 	  int err = N;
 	  while(gulag)
 	    {
-#pragma omp parallel //firstprivate(forbidden)
+#pragma omp parallel proc_bind(spread) //firstprivate(forbidden)
 	      {
 		int *forbidden = new int[N]{0};
 #pragma omp for schedule(guided)
@@ -192,53 +192,59 @@ int main(int argc,const char **argv)
 		      }
 		  }
 		delete [] forbidden;
-	      
+	    }
 	      //break;
-	      
+	      #pragma omp barrier
 	      err = 0;
-	      if(t>1)
-		{
-		  int bb = 0;
-		  int * hatalar = new int[N];
-#pragma omp for schedule(guided)
-		  for(int i=0;i<N;i++)
-		    {
-		      int ind = i;
-		      int currColor = colors[ind];
-		      int start = row[ind];
-		      int end = row[ind+1];
-		      for(int n = start;n<end;n++)
-			{
-			if(colors[col[n]] == currColor)
-			  {
-			    
-			    if(j > col[n])
-			      {
-				hatalar[bb] = i;//erroneus vertice
-				bb++;
-				
-			      }
-			  }
-			}
-		    }
-#pragma omp critical
+
+
+		if(t>1)
 		  {
-		    for(int i = 0;i<bb;i++)
+		    int * hatalar = new int[N];
+#pragma omp parallel proc_bind(spread)
 		    {
-		      myArr[err] =  hatalar[i];
-		      err++;
+		      int bb = 0;
+		    
+#pragma omp for schedule(guided)
+		      for(int i=0;i<N;i++)
+			{
+			  int ind = i;
+			  int currColor = colors[ind];
+			  int start = row[ind];
+			  int end = row[ind+1];
+			  for(int n = start;n<end;n++)
+			    {
+			      if(colors[col[n]] == currColor)
+				{
+				  if(col[n] > i)
+				    {
+				      #pragma omp critical
+				      {
+				      hatalar[err] = i;//erroneus vertice
+				      err++;
+				      }
+				    }
+				}
+			      
+			    }
+			}
+
+			/*for(int i = 0;i<bb;i++)
+			  {
+			    myArr[err] =  hatalar[i];
+			    err++;*/
+		      //swap(&myArr + err,hatalar);
+		      
 		    }
+		    myArr = hatalar;
 		  }
-		  
-		}
-	      }
-	      
-	      if(err == 0)
-		gulag = false;
-	      
-	      
-	    }  
-	  double ends= omp_get_wtime();
+		
+		if(err == 0)
+		  gulag = false;
+		
+	}      
+  
+  double ends= omp_get_wtime();
 	  cout<<t << " Threads Execution time is: " << ends - begin << " seconds ";
 	  checkGraph(row,col,colors,N);
 	  
