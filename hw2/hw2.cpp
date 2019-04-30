@@ -8,7 +8,17 @@
 #include <set>
 using namespace std;
 
-
+bool check(int *row, int *col, int *color, int N) {
+    for(int i = 0; i < N; i++) {
+        for(int j = row[i];j < row[i+1]; j++) {
+            if(color[i] == color[col[j]]) {
+                cout << " ERROR";
+                return false;
+            }
+        }
+    }
+    return true;
+}
 void checkGraph(int *row,int *col,int *colors,int N)
 {
   for(int i=0;i<N;i++)
@@ -186,7 +196,8 @@ int main(int argc,const char **argv)
 
 	    double ends= omp_get_wtime();
 	  cout<<t << " Threads Execution time is: " << ends - begin << " seconds ";
-	  checkGraph(row,col,colors,N);	  
+	  checkGraph(row,col,colors,N);
+	  //	  check(row,col,colors,N);	  
 
 	  int maxy = 0;
 	  for(int q = 0;q<N;q++)
