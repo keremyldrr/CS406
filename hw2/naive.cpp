@@ -168,7 +168,7 @@ int main(int argc,const char **argv)
 	      {
 		int *forbidden = new int[N]{0};
 #pragma omp for schedule(guided)
-		for(int v = 0; v <N;v++)
+		for(int v = 0; v <err;v++)
 		  {
 		    int ind = myArr[v];//badboyz[tid][v];
 		    int start = row[ind];
@@ -191,46 +191,52 @@ int main(int argc,const char **argv)
 			  }
 		      }
 		  }
-	      delete [] forbidden;
-	      }
+		delete [] forbidden;
+	      
 	      //break;
 	      
 	      err = 0;
 	      if(t>1)
-		  {
-#pragma omp parallel
-	      {
-		int bb = 0;
-		int * hatalar = new int[N];
-#pragma omp for schedule(guided) reduction(+:err)
-		for(int i=0;i<N;i++)
-		  {
-		    int ind = i;
-		    int currColor = colors[ind];
-		    int start = row[ind];
-		    int end = row[ind+1];
-		    
-		    for(int n = start;n<end;n++)
-		      {
+		{
+		  int bb = 0;
+		  int * hatalar = new int[N];
+#pragma omp for schedule(guided)
+		  for(int i=0;i<N;i++)
+		    {
+		      int ind = i;
+		      int currColor = colors[ind];
+		      int start = row[ind];
+		      int end = row[ind+1];
+		      for(int n = start;n<end;n++)
+			{
 			if(colors[col[n]] == currColor)
 			  {
-			    //#pragma omp a
-			    	    
-			    bb++;
-			      
-			    hatalar[bb] = i;//erroneus vertice
 			    
+			    if(j > col[n])
+			      {
+				hatalar[bb] = i;//erroneus vertice
+				bb++;
+				
+			      }
 			  }
-		      }
+			}
+		    }
+#pragma omp critical
+		  {
+		    for(int i = 0;i<bb;i++)
+		    {
+		      myArr[err] =  hatalar[i];
+		      err++;
+		    }
 		  }
-
-		err += bb;
-	      }	      
-		  }
-		if(err == 0)
-		  gulag = false;
-		
-		
+		  
+		}
+	      }
+	      
+	      if(err == 0)
+		gulag = false;
+	      
+	      
 	    }  
 	  double ends= omp_get_wtime();
 	  cout<<t << " Threads Execution time is: " << ends - begin << " seconds ";
@@ -246,9 +252,9 @@ int main(int argc,const char **argv)
 	    }
 	  
 	  cout << "There are " << maxy <<  " colors" << endl;
-	    }
-	  
-	
+	}
+      
+      
       
       return 0;
 }
