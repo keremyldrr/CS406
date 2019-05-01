@@ -33,7 +33,7 @@ void checkGraph(int *row,int *col,int *colors,int N)
       cout  << cnt <<  " ERRORS OCCURRED  ";
       return;
     }
-  cout << "ALL IS WELL ";
+  //  cout << "ALL IS WELL ";
   
 
 }
@@ -74,7 +74,7 @@ int main(int argc,const char **argv)
 
 
 
-      cout << "Graph has " << N << " nodes and " << (1+symmetric*1)*edge << " edges and symmetric " << symmetric << endl;
+      //cout << "Graph has " << N << " nodes and " << (1+symmetric*1)*edge << " edges and symmetric " << symmetric << endl;
 
       int n;
       bool based0 = false;
@@ -85,10 +85,10 @@ int main(int argc,const char **argv)
           }
       }
       file.close();
-      if(based0)
-          cout << "Graph is 0 based" << endl;
-      else
-          cout << "Graph is 1 based and is being turned in to 0 base." << endl;
+      //  if(based0)
+      //  cout << "Graph is 0 based" << endl;
+      //else
+      //  cout << "Graph is 1 based and is being turned in to 0 base." << endl;
 
       file.open(filename);
       while(file.peek() == '%')
@@ -149,7 +149,8 @@ int main(int argc,const char **argv)
           }
           row[i+1] = index;
       }
-      cout << "Preprocessing complete" << endl;
+      //      cout << "Preprocessing complete" << endl;
+      //      cout<<"Graph,NumThreads,Time,NumColors,\n";
       for(int t = 1; t<=16;t*=2)
 	{
 	  double begin = omp_get_wtime();
@@ -167,7 +168,7 @@ int main(int argc,const char **argv)
 #pragma omp parallel proc_bind(spread) //firstprivate(forbidden)
 	      {
 		int *forbidden = new int[N]{0};
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static)
 		for(int v = 0; v <err;v++)
 		  {
 		    int ind = myArr[v];//badboyz[tid][v];
@@ -205,7 +206,7 @@ int main(int argc,const char **argv)
 		    {
 		      int bb = 0;
 		    
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static)
 		      for(int i=0;i<N;i++)
 			{
 			  int ind = i;
@@ -245,7 +246,7 @@ int main(int argc,const char **argv)
 	}      
   
   double ends= omp_get_wtime();
-	  cout<<t << " Threads Execution time is: " << ends - begin << " seconds ";
+  cout<<filename << ","<<t << "," << ends - begin << ",";
 	  checkGraph(row,col,colors,N);
 	  
 	  
@@ -254,10 +255,9 @@ int main(int argc,const char **argv)
 	    {
 	      if(colors[q] > maxy)
 		maxy = colors[q];
-	      
 	    }
 	  
-	  cout << "There are " << maxy <<  " colors" << endl;
+	  cout << maxy<<endl;
 	}
       
       
