@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -6,7 +7,7 @@
 using namespace std;
 typedef long long int ll;
 
-__global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noChunks,ll lim,float *errorCheck,int numT)
+__global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noChunks,ll lim,int numT)
 {
   extern __shared__ float shared_x [];
   //extern __shared__ int Mstart [];
@@ -27,7 +28,7 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
     {
       for(int j=0;j<N;j++)
 	{
-	  Mstart[i*N + j] = M[i*N + j];
+	  Mstart[i + j*N] = M[i + j*N];
 	  
 	}
       
@@ -49,7 +50,7 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
       
       for (int  q = 0; q < N; q++)
 	{
-	  shared_x[block_id + q*numT] += Mstart[q*N +(bit-1)];
+	  shared_x[block_id + q*numT] += Mstart[q +N*(bit-1)];
 
 	}
       y = y^(1LL << (bit-1));
@@ -87,7 +88,7 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
      
       for( ll i=0;i<N;i++)
 	{
-	  shared_x[i*numT + block_id] += s*Mstart[i*N + (z-1)];
+	  shared_x[i*numT + block_id] += s*Mstart[i + N*(z-1)];
 	  prodX *= shared_x[i*numT + block_id ];
 	}
       
@@ -97,7 +98,7 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
       prodSign*=-1;
     }
     //
-    errorCheck[gl_tid] = res;
+  atomicAdd(d_p, res);
 }                  
 
 void usage()
@@ -191,7 +192,7 @@ int main(int argc, const char** argv)
     {
       for(int j = 0;j<N;j++)
 	{
-	  new_m[i*N + j] = M[i][j];
+	  new_m[i + j*N] = M[i][j];
 	  //cout << new_m[i*N + j] << endl;
 	}
     }
@@ -225,29 +226,21 @@ int main(int argc, const char** argv)
       CudaSafeCall(cudaMemcpy(d_local,local_x_values,sizeof(float)*( N),cudaMemcpyHostToDevice) );
       CudaSafeCall(cudaMemcpy(d_m,new_m,sizeof(int)*N*N,cudaMemcpyHostToDevice));
       CudaSafeCall(cudaMemcpy(d_p,&p,sizeof(float),cudaMemcpyHostToDevice));
-      CudaSafeCall(cudaMemcpy(d_errortest,errortest,errorSize,cudaMemcpyHostToDevice));
+      //CudaSafeCall(cudaMemcpy(d_errortest,errortest,errorSize,cudaMemcpyHostToDevice));
   
 
   start = omp_get_wtime();      
 
   int shared_size =  N * threads * sizeof(float) + N*N*sizeof(int);
   cout << mem << " " << shared_size << " "<<  numThreads << endl;
-  permanent<<<numBlocks,threads, shared_size >>>(d_m,d_local,N,d_p,chunkSize,noChunks,lim,d_errortest,numThreads);
+  permanent<<<numBlocks,threads, shared_size >>>(d_m,d_local,N,d_p,chunkSize,noChunks,lim,numThreads);
   CudaCheckError();
   end = omp_get_wtime();
   
-  //CudaSafeCall(cudaMemcpy(&p,d_p,sizeof(float),cudaMemcpyDeviceToHost));
-  CudaSafeCall(cudaMemcpy(errortest,d_errortest,errorSize,cudaMemcpyDeviceToHost));
+  CudaSafeCall(cudaMemcpy(&p,d_p,sizeof(float),cudaMemcpyDeviceToHost));
+  //  CudaSafeCall(cudaMemcpy(errortest,d_errortest,errorSize,cudaMemcpyDeviceToHost));
   
-  for(int i=0;i<totalNumThreads;i++)
-    {
-      //      if(i %N == 0 && i<numThreads*N)
-      //cout << "***********" << endl;
-      p+=errortest[i];
-      //if(i<numThreads*N)
-      //cout << errortest[i] << " ";
-      
-    }
+
   cout << "FINAL P "<<p << endl;
   float result = (4 * (N % 2) - 2) * p;
   //cout << result << endl;

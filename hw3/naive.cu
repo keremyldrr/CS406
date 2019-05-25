@@ -25,7 +25,7 @@ __global__ void preprocess(ll *M,double *allLocalX,int N,int chunkSize)
 	    allLocalX[tid*N + q] += M[q*N + bit-1];
 
 	  }
-	y = y^(1 << (bit-1));
+	y = y^(1LL << (bit-1));
       }
     }    
       

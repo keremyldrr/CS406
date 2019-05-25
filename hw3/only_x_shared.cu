@@ -6,58 +6,34 @@
 using namespace std;
 typedef long long int ll;
 
-__global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noChunks,ll lim,float *errorCheck,int numT)
+__global__ void permanent(ll *M,float *X,ll N,float *d_p,ll  chunkSize,int noChunks,ll lim)
 {
   extern __shared__ float shared_x [];
-  //extern __shared__ int Mstart [];
-
   ll gl_tid = threadIdx.x + blockIdx.x * blockDim.x;
   ll block_id = threadIdx.x;
 
-  int cnt = 0;
-  for(int i=block_id;i<N*numT;i+=numT){
-    shared_x[i] = X[cnt];
-    cnt++;
-  }
-  int *Mstart = (int *)&shared_x[N*numT];
-  
-  //int *Mstart =  (int *)(shared_x + cnt);
-  if(block_id == 0){
-    for(int i=0;i<N;i++)
-    {
-      for(int j=0;j<N;j++)
-	{
-	  Mstart[i*N + j] = M[i*N + j];
-	  
-	}
-      
-    }
-  }
+  for(int i =0;i<N;i++)
+    shared_x[N*block_id + i] = X[i];
+
   __syncthreads();
-
-  
-
-  
   ll  r = (gl_tid)*chunkSize; // each chunk in X array is of size N;
-    
-    ll  y = r ^ (r>>1LL);
-    ll  numSetBits= __popcll(y);
-    
-    for( int f=0;f<numSetBits;f++)
-      {
+  ll  y = r ^ (r>>1LL);
+  ll  numSetBits= __popcll(y);
+  for( int f=0;f<numSetBits;f++)
+    {
       ll bit = __ffsll(y);
       
       for (int  q = 0; q < N; q++)
 	{
-	  shared_x[block_id + q*numT] += Mstart[q*N +(bit-1)];
-
+	  shared_x[N*block_id + q] +=  M[q*N +(bit-1)];
+	  
 	}
       y = y^(1LL << (bit-1));
       
-      } ///value initialization
-    ////////////////////////////////////////////
+    } ///value initialization
+  ////////////////////////////////////////////
     //  chunkSize+=1; 
-     
+  
 
     ll start = gl_tid*chunkSize+1;
     ll end = start+chunkSize;
@@ -69,8 +45,7 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
   else
     prodSign = 1LL;
   for( ll ind=start;ind<end && ind < limiter;ind++)
-    {
-      
+    {      
       ll y = (ind ^ (ind >> 1LL));
       ll j = ind-1;
       ll z = __ffsll(y ^ (j ^ (j >> 1LL)));
@@ -87,17 +62,16 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
      
       for( ll i=0;i<N;i++)
 	{
-	  shared_x[i*numT + block_id] += s*Mstart[i*N + (z-1)];
-	  prodX *= shared_x[i*numT + block_id ];
+	  shared_x[i + block_id*N] += s*M[i*N + (z-1)];
+	  prodX *= shared_x[i + block_id*N];
 	}
       
       res +=  prodSign * prodX;
-      
-      
       prodSign*=-1;
     }
     //
-    errorCheck[gl_tid] = res;
+  //errorCheck[gl_tid] = res;
+  atomicAdd(d_p,res);
 }                  
 
 void usage()
@@ -123,13 +97,13 @@ int main(int argc, const char** argv)
 
 
   int N;
-  int **M;
+  ll **M;
   getline(input,line);
   N = atoi(line.c_str());
 
-  M = new int*[N];
+  M = new ll*[N];
   for(int i = 0; i < N; i ++)
-    M[i] = new int[N];
+    M[i] = new ll[N];
 
 
   int linectr = 0;
@@ -151,9 +125,11 @@ int main(int argc, const char** argv)
   ll max_blocks = prop.maxGridSize[0];
   ll mem = prop.sharedMemPerBlock; //bytes
   ll float_size = sizeof(float);
+  cout << "we can fit  " << mem/(N*float_size) <<  " "<< "gridsize is "<< prop.maxGridSize[0] << endl;
 
+  cout << "Available shared memory is : " << mem << endl;
   int numThreads  = 256; //THREADS PER BLOCK
-  threads =  numThreads;
+  threads=  numThreads;
   int numBlocks = 1024*64;//max_blocks/N;
   //  threads=1;
   ll totalNumThreads = numThreads * numBlocks;
@@ -168,23 +144,23 @@ int main(int argc, const char** argv)
   cout << "Chunksize is : " << chunkSize <<  " lim is " <<lim << " and there are "<<noChunks << " chunks and "<<totalNumThreads << " threads "<<  endl;  
 
   float *local_x_values = new float [ N];
-  int *new_m = new int[N * N];
+  ll *new_m = new ll[N * N];
   float *column_sum = new float[N];
 
 
 
   float *d_local;
-  int *d_m;
+  ll *d_m;
   float *d_p;
   float *errortest = new float [totalNumThreads];//change it to num threads
   ll errorSize = sizeof(float )*(totalNumThreads);
   float *d_errortest;
 
   CudaSafeCall(cudaMalloc((void **)&d_local,sizeof(float)*( N)));
-  CudaSafeCall(cudaMalloc((void **)&d_m,sizeof(int)*(N * N)));
+  CudaSafeCall(cudaMalloc((void **)&d_m,sizeof(ll)*(N * N)));
 
   CudaSafeCall(cudaMalloc((void **)&d_p,sizeof(float)));
-  CudaSafeCall(cudaMalloc((void **)&d_errortest,errorSize));
+  //  CudaSafeCall(cudaMalloc((void **)&d_errortest,errorSize));
   
 
   for(int i = 0;i<N;i++)
@@ -215,7 +191,7 @@ int main(int argc, const char** argv)
     }
   cout << "INITIAL P " << p << endl;
   
-  for(int j=0;j<N;j++)
+      for(int j=0;j<N;j++)
 	{
 	  local_x_values[j] = (M[j][N-1] - float(column_sum[j]/2));
 	}
@@ -223,31 +199,31 @@ int main(int argc, const char** argv)
 
 
       CudaSafeCall(cudaMemcpy(d_local,local_x_values,sizeof(float)*( N),cudaMemcpyHostToDevice) );
-      CudaSafeCall(cudaMemcpy(d_m,new_m,sizeof(int)*N*N,cudaMemcpyHostToDevice));
+      CudaSafeCall(cudaMemcpy(d_m,new_m,sizeof(ll)*N*N,cudaMemcpyHostToDevice));
       CudaSafeCall(cudaMemcpy(d_p,&p,sizeof(float),cudaMemcpyHostToDevice));
-      CudaSafeCall(cudaMemcpy(d_errortest,errortest,errorSize,cudaMemcpyHostToDevice));
+      //  CudaSafeCall(cudaMemcpy(d_errortest,errortest,errorSize,cudaMemcpyHostToDevice));
   
 
   start = omp_get_wtime();      
 
-  int shared_size =  N * threads * sizeof(float) + N*N*sizeof(int);
-  cout << mem << " " << shared_size << " "<<  numThreads << endl;
-  permanent<<<numBlocks,threads, shared_size >>>(d_m,d_local,N,d_p,chunkSize,noChunks,lim,d_errortest,numThreads);
+  int shared_size =  N * threads * sizeof(float);
+  cout << mem << " " << shared_size << endl;
+  permanent<<<numBlocks,threads, shared_size >>>(d_m,d_local,N,d_p,chunkSize,noChunks,lim);
   CudaCheckError();
   end = omp_get_wtime();
   
-  //CudaSafeCall(cudaMemcpy(&p,d_p,sizeof(float),cudaMemcpyDeviceToHost));
-  CudaSafeCall(cudaMemcpy(errortest,d_errortest,errorSize,cudaMemcpyDeviceToHost));
+  CudaSafeCall(cudaMemcpy(&p,d_p,sizeof(float),cudaMemcpyDeviceToHost));
+  //CudaSafeCall(cudaMemcpy(errortest,d_errortest,errorSize,cudaMemcpyDeviceToHost));
   
-  for(int i=0;i<totalNumThreads;i++)
+  /*  for(int i=0;i<totalNumThreads;i++)
     {
-      //      if(i %N == 0 && i<numThreads*N)
+      //      if(i %N == 0 && i<100*N)
       //cout << "***********" << endl;
       p+=errortest[i];
-      //if(i<numThreads*N)
+      //if(i<100 * N)
       //cout << errortest[i] << " ";
       
-    }
+      }*/
   cout << "FINAL P "<<p << endl;
   float result = (4 * (N % 2) - 2) * p;
   //cout << result << endl;

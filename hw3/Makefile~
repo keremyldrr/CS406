@@ -1,2 +1,2 @@
 all:
-	nvcc naive.cu -o cuda -O3 -arch=sm_60  -Xcompiler -O3 -std=c++11  -Xcompiler  -fopenmp -Xcompiler -std=c++11 -g	
+	nvcc hw4.cu -o shared_m -O3 -arch=sm_35  -Xcompiler -O3 -std=c++11  -Xcompiler  -fopenmp -Xcompiler -std=c++11 -g	
