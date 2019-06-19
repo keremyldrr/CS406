@@ -7,7 +7,7 @@ shared:
 shared_coal:
 	nvcc shared_coal.cu -o shared_coal -O3 -arch=sm_60  -Xcompiler -O3 -std=c++11  -Xcompiler  -fopenmp -Xcompiler -std=c++11
 shared_coal_m:
-	nvcc shared_m_coalesced.cu -o shared_m_coal -O3 -arch=sm_60  -Xcompiler -O3 -std=c++11  -Xcompiler  -fopenmp -Xcompiler -std=c++11
+	nvcc permanent.cu -o permanentGPU -O3 -arch=sm_60  -Xcompiler -O3 -std=c++11  -Xcompiler  -fopenmp -Xcompiler -std=c++11
 clean:
 	rm naive
 	rm coalesced

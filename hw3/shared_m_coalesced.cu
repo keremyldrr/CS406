@@ -10,7 +10,6 @@ typedef long long int ll;
 __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noChunks,ll lim,int numT)
 {
   extern __shared__ float shared_x [];
-  //extern __shared__ int Mstart [];
 
   ll gl_tid = threadIdx.x + blockIdx.x * blockDim.x;
   ll block_id = threadIdx.x;
@@ -21,8 +20,6 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
     cnt++;
   }
   int *Mstart = (int *)&shared_x[N*numT];
-  
-  //int *Mstart =  (int *)(shared_x + cnt);
   if(block_id == 0){
     for(int i=0;i<N;i++)
     {
@@ -57,7 +54,7 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
       
       } ///value initialization
     ////////////////////////////////////////////
-    //  chunkSize+=1; 
+
      
 
     ll start = gl_tid*chunkSize+1;
@@ -82,22 +79,15 @@ __global__ void permanent(int *M,float *X,ll N,float *d_p,ll  chunkSize,int noCh
 	s=-1;
       else
 	s=1;
-      
-      
       float prodX = 1;
-     
       for( ll i=0;i<N;i++)
 	{
 	  shared_x[i*numT + block_id] += s*Mstart[i + N*(z-1)];
 	  prodX *= shared_x[i*numT + block_id ];
 	}
-      
       res +=  prodSign * prodX;
-      
-      
       prodSign*=-1;
     }
-    //
   atomicAdd(d_p, res);
 }                  
 
@@ -106,9 +96,6 @@ void usage()
   cout << "USAGE: ./exec <filename>" << endl;
   exit(0);
 }
-
-
-
 int main(int argc, const char** argv)
 {
   
@@ -152,8 +139,7 @@ int main(int argc, const char** argv)
   ll max_blocks = prop.maxGridSize[0];
   ll mem = prop.sharedMemPerBlock; //bytes
   ll float_size = sizeof(float);
-
-  int numThreads  = 256; //THREADS PER BLOCK
+  int numThreads  = 256;//(mem - N*N*sizeof(int))/(N*sizeof(float)); //THREADS PER BLOCK
   threads =  numThreads;
   int numBlocks = 1024*64;//max_blocks/N;
   //  threads=1;
@@ -166,39 +152,30 @@ int main(int argc, const char** argv)
   if(chunkSize == 0)
     chunkSize = 1;
   ll noChunks = totalNumThreads;//lim/chunkSize ;
-  cout << "Chunksize is : " << chunkSize <<  " lim is " <<lim << " and there are "<<noChunks << " chunks and "<<totalNumThreads << " threads "<<  endl;  
-
+   cout << "Chunksize is : " << chunkSize <<  " lim is " <<lim << " and there are "<<noChunks << " chunks and "<<totalNumThreads << " threads "<<  endl;  
   float *local_x_values = new float [ N];
   int *new_m = new int[N * N];
   float *column_sum = new float[N];
-
-
-
   float *d_local;
   int *d_m;
   float *d_p;
   float *errortest = new float [totalNumThreads];//change it to num threads
   ll errorSize = sizeof(float )*(totalNumThreads);
   float *d_errortest;
-
   CudaSafeCall(cudaMalloc((void **)&d_local,sizeof(float)*( N)));
   CudaSafeCall(cudaMalloc((void **)&d_m,sizeof(int)*(N * N)));
-
   CudaSafeCall(cudaMalloc((void **)&d_p,sizeof(float)));
   CudaSafeCall(cudaMalloc((void **)&d_errortest,errorSize));
-  
-
   for(int i = 0;i<N;i++)
     {
       for(int j = 0;j<N;j++)
 	{
 	  new_m[i + j*N] = M[i][j];
-	  //cout << new_m[i*N + j] << endl;
-	}
+	} //M initialization for GPU
     }
 
   
-  ////YOUR CODE GOES HERE
+ 
 
   float p = 1;
   
@@ -214,9 +191,9 @@ int main(int argc, const char** argv)
       p *= (M[i][N-1] - column_sum[i]/2);
       
     }
-  cout << "INITIAL P " << p << endl;
+  // cout << "INITIAL P " << p << endl;
   
-  for(int j=0;j<N;j++)
+  for(int j=0;j<N;j++) // X vector init
 	{
 	  local_x_values[j] = (M[j][N-1] - float(column_sum[j]/2));
 	}
@@ -226,29 +203,23 @@ int main(int argc, const char** argv)
       CudaSafeCall(cudaMemcpy(d_local,local_x_values,sizeof(float)*( N),cudaMemcpyHostToDevice) );
       CudaSafeCall(cudaMemcpy(d_m,new_m,sizeof(int)*N*N,cudaMemcpyHostToDevice));
       CudaSafeCall(cudaMemcpy(d_p,&p,sizeof(float),cudaMemcpyHostToDevice));
-      //CudaSafeCall(cudaMemcpy(d_errortest,errortest,errorSize,cudaMemcpyHostToDevice));
   
-
+ ////PREPROCESSING COMPLETE
   start = omp_get_wtime();      
 
   int shared_size =  N * threads * sizeof(float) + N*N*sizeof(int);
-  cout << mem << " " << shared_size << " "<<  numThreads << endl;
+  
   permanent<<<numBlocks,threads, shared_size >>>(d_m,d_local,N,d_p,chunkSize,noChunks,lim,numThreads);
   CudaCheckError();
   end = omp_get_wtime();
   
   CudaSafeCall(cudaMemcpy(&p,d_p,sizeof(float),cudaMemcpyDeviceToHost));
-  //  CudaSafeCall(cudaMemcpy(errortest,d_errortest,errorSize,cudaMemcpyDeviceToHost));
+
   
 
   cout << "FINAL P "<<p << endl;
   float result = (4 * (N % 2) - 2) * p;
-  //cout << result << endl;
-  //// YOUR CODE ENDS HERE
-  
-
-    
-    cout << "GPU \tResult:" << result << "\tTime:" << end - start << " s" << endl;
+  cout << "GPU \tResult:" << result << "\tTime:" << end - start << " s" << endl;
     //cout << t << "," << result << "," << end - start <<",\n";
     
     
